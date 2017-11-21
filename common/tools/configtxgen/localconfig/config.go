@@ -66,6 +66,15 @@ const (
 	// SampleSingleMSPKafkaV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses Kafka for ordering.
 	SampleSingleMSPKafkaV11Profile = "SampleSingleMSPKafkaV1_1"
 
+	// SampleInsecureHoneyBadgerBFTProfile references the sample profile which does not include any MSPs and uses HoneyBadgerBFT for ordering.
+	SampleInsecureHoneyBadgerBFTProfile = "SampleInsecureHoneyBadgerBFT"
+	// SampleDevModeHoneyBadgerBFTProfile references the sample profile which requires only basic membership for admin privileges and uses HoneyBadgerBFT for ordering.
+	SampleDevModeHoneyBadgerBFTProfile = "SampleDevModeHoneyBadgerBFT"
+	// SampleSingleMSPHoneyBadgerBFTProfile references the sample profile which includes only the sample MSP and uses HoneyBadgerBFT for ordering.
+	SampleSingleMSPHoneyBadgerBFTProfile = "SampleSingleMSPHoneyBadgerBFT"
+	// SampleSingleMSPHoneyBadgerBFTV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses HoneyBadgerBFT for ordering.
+	SampleSingleMSPHoneyBadgerBFTV11Profile = "SampleSingleMSPHoneyBadgerBFTV1_1"
+
 	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
 	// SampleSingleMSPChannelV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities and is used to create a channel
@@ -134,14 +143,15 @@ type AnchorPeer struct {
 // Orderer contains configuration which is used for the
 // bootstrapping of an orderer by the provisional bootstrapper.
 type Orderer struct {
-	OrdererType   string          `yaml:"OrdererType"`
-	Addresses     []string        `yaml:"Addresses"`
-	BatchTimeout  time.Duration   `yaml:"BatchTimeout"`
-	BatchSize     BatchSize       `yaml:"BatchSize"`
-	Kafka         Kafka           `yaml:"Kafka"`
-	Organizations []*Organization `yaml:"Organizations"`
-	MaxChannels   uint64          `yaml:"MaxChannels"`
-	Capabilities  map[string]bool `yaml:"Capabilities"`
+	OrdererType    string          `yaml:"OrdererType"`
+	Addresses      []string        `yaml:"Addresses"`
+	BatchTimeout   time.Duration   `yaml:"BatchTimeout"`
+	BatchSize      BatchSize       `yaml:"BatchSize"`
+	Kafka          Kafka           `yaml:"Kafka"`
+	HoneyBadgerBFT HoneyBadgerBFT  `yaml:"HoneyBadgerBFT"`
+	Organizations  []*Organization `yaml:"Organizations"`
+	MaxChannels    uint64          `yaml:"MaxChannels"`
+	Capabilities   map[string]bool `yaml:"Capabilities"`
 }
 
 // BatchSize contains configuration affecting the size of batches.
@@ -156,6 +166,11 @@ type Kafka struct {
 	Brokers []string `yaml:"Brokers"`
 }
 
+type HoneyBadgerBFT struct {
+	SendSocketPath string
+	ReceiveSocketPath string
+}
+
 var genesisDefaults = TopLevel{
 	Orderer: &Orderer{
 		OrdererType:  "solo",
@@ -168,6 +183,10 @@ var genesisDefaults = TopLevel{
 		},
 		Kafka: Kafka{
 			Brokers: []string{"127.0.0.1:9092"},
+		},
+		HoneyBadgerBFT: HoneyBadgerBFT{
+			SendSocketPath: "/tmp/hyperledger-honey-badger-1-send",
+			ReceiveSocketPath: "/tmp/hyperledger-honey-badger-1-receive",
 		},
 	},
 }
@@ -316,6 +335,12 @@ func (oc *Orderer) completeInitialization() {
 		case oc.Kafka.Brokers == nil:
 			logger.Infof("Orderer.Kafka.Brokers unset, setting to %v", genesisDefaults.Orderer.Kafka.Brokers)
 			oc.Kafka.Brokers = genesisDefaults.Orderer.Kafka.Brokers
+		case oc.HoneyBadgerBFT.SendSocketPath == "":
+			logger.Infof("Orderer.HoneyBadgerBFT.SendSocketPath unset, setting to %s", genesisDefaults.Orderer.HoneyBadgerBFT.SendSocketPath)
+			oc.HoneyBadgerBFT.SendSocketPath = genesisDefaults.Orderer.HoneyBadgerBFT.SendSocketPath
+		case oc.HoneyBadgerBFT.ReceiveSocketPath == "":
+			logger.Infof("Orderer.HoneyBadgerBFT.ReceiveSocketPath unset, setting to %s", genesisDefaults.Orderer.HoneyBadgerBFT.ReceiveSocketPath)
+			oc.HoneyBadgerBFT.ReceiveSocketPath = genesisDefaults.Orderer.HoneyBadgerBFT.ReceiveSocketPath
 		default:
 			return
 		}

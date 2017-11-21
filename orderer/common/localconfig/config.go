@@ -65,6 +65,7 @@ type TopLevel struct {
 	FileLedger FileLedger
 	RAMLedger  RAMLedger
 	Kafka      Kafka
+	HoneyBadgerBFT HoneyBadgerBFT
 	Debug      Debug
 }
 
@@ -119,6 +120,11 @@ type Kafka struct {
 	Verbose bool
 	Version sarama.KafkaVersion // TODO Move this to global config
 	TLS     TLS
+}
+
+type HoneyBadgerBFT struct {
+	SendSocketPath string
+	ReceiveSocketPath string
 }
 
 // Retry contains configuration related to retries and timeouts when the
@@ -224,6 +230,10 @@ var defaults = TopLevel{
 		TLS: TLS{
 			Enabled: false,
 		},
+	},
+	HoneyBadgerBFT: HoneyBadgerBFT{
+		SendSocketPath: "/tmp/hyper-ledger-honey-badger-bft-1-send",
+		ReceiveSocketPath: "/tmp/hyper-ledger-honey-badger-bft-1-receive",
 	},
 	Debug: Debug{
 		BroadcastTraceDir: "",
@@ -364,6 +374,14 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.Kafka.Version == sarama.KafkaVersion{}:
 			logger.Infof("Kafka.Version unset, setting to %v", defaults.Kafka.Version)
 			c.Kafka.Version = defaults.Kafka.Version
+
+		case c.HoneyBadgerBFT.SendSocketPath == "":
+			logger.Infof("Orderer.HoneyBadgerBFT.SendSocketPath unset, setting to %s", defaults.HoneyBadgerBFT.SendSocketPath)
+			c.HoneyBadgerBFT.SendSocketPath = defaults.HoneyBadgerBFT.SendSocketPath
+
+		case c.HoneyBadgerBFT.ReceiveSocketPath == "":
+			logger.Infof("Orderer.HoneyBadgerBFT.ReceiveSocketPath unset, setting to %s", defaults.HoneyBadgerBFT.ReceiveSocketPath)
+			c.HoneyBadgerBFT.ReceiveSocketPath = defaults.HoneyBadgerBFT.ReceiveSocketPath
 
 		default:
 			return

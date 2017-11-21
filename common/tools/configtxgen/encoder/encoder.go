@@ -42,6 +42,8 @@ const (
 	ConsensusTypeSolo = "solo"
 	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
 	ConsensusTypeKafka = "kafka"
+	// ConsensusTypeHoneyBadgerBFT identifies the HoneyBadgerBFT-based consensus implementation.
+	ConsensusTypeHoneyBadgerBFT = "honeybadgerbft"
 
 	// BlockValidationPolicyKey TODO
 	BlockValidationPolicyKey = "BlockValidation"
@@ -157,6 +159,7 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 
 	switch conf.OrdererType {
 	case ConsensusTypeSolo:
+	case ConsensusTypeHoneyBadgerBFT:
 	case ConsensusTypeKafka:
 		addValue(ordererGroup, channelconfig.KafkaBrokersValue(conf.Kafka.Brokers), channelconfig.AdminsPolicyKey)
 	default:
