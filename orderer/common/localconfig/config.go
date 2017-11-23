@@ -61,12 +61,12 @@ func init() {
 // modify the default mapping, see the "Unmarshal"
 // section of https://github.com/spf13/viper for more info
 type TopLevel struct {
-	General    General
-	FileLedger FileLedger
-	RAMLedger  RAMLedger
-	Kafka      Kafka
+	General        General
+	FileLedger     FileLedger
+	RAMLedger      RAMLedger
+	Kafka          Kafka
 	HoneyBadgerBFT HoneyBadgerBFT
-	Debug      Debug
+	Debug          Debug
 }
 
 // General contains config which should be common among all orderer types.
@@ -123,7 +123,7 @@ type Kafka struct {
 }
 
 type HoneyBadgerBFT struct {
-	SendSocketPath string
+	SendSocketPath    string
 	ReceiveSocketPath string
 }
 
@@ -232,7 +232,7 @@ var defaults = TopLevel{
 		},
 	},
 	HoneyBadgerBFT: HoneyBadgerBFT{
-		SendSocketPath: "/tmp/hyper-ledger-honey-badger-bft-1-send",
+		SendSocketPath:    "/tmp/hyper-ledger-honey-badger-bft-1-send",
 		ReceiveSocketPath: "/tmp/hyper-ledger-honey-badger-bft-1-receive",
 	},
 	Debug: Debug{

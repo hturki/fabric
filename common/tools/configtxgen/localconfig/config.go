@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 
 	"github.com/spf13/viper"
 
@@ -167,7 +167,7 @@ type Kafka struct {
 }
 
 type HoneyBadgerBFT struct {
-	SendSocketPath string
+	SendSocketPath    string
 	ReceiveSocketPath string
 }
 
@@ -185,7 +185,7 @@ var genesisDefaults = TopLevel{
 			Brokers: []string{"127.0.0.1:9092"},
 		},
 		HoneyBadgerBFT: HoneyBadgerBFT{
-			SendSocketPath: "/tmp/hyperledger-honey-badger-1-send",
+			SendSocketPath:    "/tmp/hyperledger-honey-badger-1-send",
 			ReceiveSocketPath: "/tmp/hyperledger-honey-badger-1-receive",
 		},
 	},

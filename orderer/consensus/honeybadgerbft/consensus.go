@@ -65,10 +65,10 @@ func (consenter *consenter) HandleChain(support consensus.ConsenterSupport, meta
 
 func newChain(support consensus.ConsenterSupport) *chain {
 	return &chain{
-		support:      support,
-		sendChan:     make(chan *cb.Block),
-		exitChan:     make(chan struct{}),
-		sendLock:     &sync.Mutex{},
+		support:  support,
+		sendChan: make(chan *cb.Block),
+		exitChan: make(chan struct{}),
+		sendLock: &sync.Mutex{},
 	}
 }
 
@@ -123,7 +123,7 @@ func (ch *chain) Configure(config *cb.Envelope, configSeq uint64) error {
 	//	return fmt.Errorf("Exiting")
 	//}
 
-	return nil;
+	return nil
 }
 
 // Errored only closes on exit
@@ -232,7 +232,7 @@ func (ch *chain) Order(env *cb.Envelope, _ uint64) error {
 
 	select {
 	case <-ch.exitChan:
-		return fmt.Errorf("Exiting")
+		return fmt.Errorf("exiting")
 	default: //JCS: avoid blocking
 		return nil
 	}
@@ -264,12 +264,10 @@ func (ch *chain) appendToChain() {
 		select {
 		case block := <-ch.sendChan:
 
-
 			err := ch.support.AppendBlock(block)
 			if err != nil {
 				logger.Panicf("Could not append block: %s", err)
 			}
-
 
 		case <-ch.exitChan:
 			logger.Debugf("Exiting...")

@@ -36,9 +36,9 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/performance"
+	"github.com/hyperledger/fabric/orderer/consensus/honeybadgerbft"
 	"github.com/op/go-logging"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"github.com/hyperledger/fabric/orderer/consensus/honeybadgerbft"
 )
 
 const pkgLogID = "orderer/common/server"
