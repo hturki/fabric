@@ -76,10 +76,11 @@ func (ch *chain) Start() {
 	conn, err := net.Dial("unix", sendSocketPath)
 
 	if err != nil {
-		logger.Debugf("Could not connect to send proxy!")
+		logger.Errorf("Could not connect to send proxy on path %s!", sendSocketPath)
+		logger.Error(err)
 		return
 	} else {
-		logger.Debugf("Connected to send proxy!")
+		logger.Infof("Connected to send proxy!")
 	}
 
 	ch.sendConnection = conn
@@ -87,10 +88,11 @@ func (ch *chain) Start() {
 	conn, err = net.Dial("unix", receiveSocketPath)
 
 	if err != nil {
-		logger.Debugf("Could not connect to receive proxy!")
+		logger.Errorf("Could not connect to receive proxy on path %s!", receiveSocketPath)
+		logger.Error(err)
 		return
 	} else {
-		logger.Debugf("Connected to receive proxy!")
+		logger.Infof("Connected to receive proxy!")
 	}
 
 	ch.receiveConnection = conn
@@ -243,13 +245,13 @@ func (ch *chain) connLoop() {
 		// receive a marshalled block
 		bytes, err := ch.recvBytes()
 		if err != nil {
-			logger.Debugf("[recv] Error while receiving block from HoneyBadgerBFT proxy: %v\n", err)
+			logger.Errorf("[recv] Error while receiving block from HoneyBadgerBFT proxy: %v\n", err)
 			continue
 		}
 
 		block, err := utils.GetBlockFromBlockBytes(bytes)
 		if err != nil {
-			logger.Debugf("[recv] Error while unmarshaling block from HoneyBadgerBFT proxy: %v\n", err)
+			logger.Errorf("[recv] Error while unmarshaling block from HoneyBadgerBFT proxy: %v\n", err)
 			continue
 		}
 
@@ -258,8 +260,6 @@ func (ch *chain) connLoop() {
 }
 
 func (ch *chain) appendToChain() {
-	//var timer <-chan time.Time //JCS: original timer to flush the blockcutter
-
 	for {
 		select {
 		case block := <-ch.sendChan:
@@ -270,7 +270,7 @@ func (ch *chain) appendToChain() {
 			}
 
 		case <-ch.exitChan:
-			logger.Debugf("Exiting...")
+			logger.Infof("Exiting...")
 			return
 		}
 	}

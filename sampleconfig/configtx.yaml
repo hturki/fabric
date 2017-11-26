@@ -37,6 +37,16 @@ Profiles:
             SampleConsortium:
                 Organizations:
 
+    # SampleInsecureKafka defines a configuration that differs from the
+    # SampleInsecureSolo one only in that it uses the Kafka-based orderer.
+    SampleInsecureHoneyBadgerBFT:
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: honeybadgerbft
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+
     # SampleDevModeSolo defines a configuration which uses the Solo orderer,
     # contains the sample MSP as both orderer and consortium member, and
     # requires only basic membership for admin privileges. It also defines
