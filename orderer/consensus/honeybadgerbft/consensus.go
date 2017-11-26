@@ -43,7 +43,7 @@ type consenter struct{}
 
 type chain struct {
 	support           consensus.ConsenterSupport
-	sendChan          chan *cb.Block
+	sendChan          chan *cb.Envelope
 	exitChan          chan struct{}
 	sendConnection    net.Conn
 	receiveConnection net.Listener
@@ -66,7 +66,7 @@ func (consenter *consenter) HandleChain(support consensus.ConsenterSupport, meta
 func newChain(support consensus.ConsenterSupport) *chain {
 	return &chain{
 		support:  support,
-		sendChan: make(chan *cb.Block),
+		sendChan: make(chan *cb.Envelope),
 		exitChan: make(chan struct{}),
 		sendLock: &sync.Mutex{},
 	}
@@ -125,7 +125,7 @@ func (ch *chain) Configure(config *cb.Envelope, configSeq uint64) error {
 	//	return fmt.Errorf("Exiting")
 	//}
 
-	return nil
+	return nil;
 }
 
 // Errored only closes on exit
@@ -135,6 +135,8 @@ func (ch *chain) Errored() <-chan struct{} {
 
 func (ch *chain) sendLength(length int, conn net.Conn) (int, error) {
 	var buf [8]byte
+
+	logger.Infof("Sending length to proxy: %s", length)
 
 	binary.BigEndian.PutUint64(buf[:], uint64(length))
 
@@ -155,6 +157,8 @@ func (ch *chain) sendEnvToBFTProxy(env *cb.Envelope) (int, error) {
 		return status, err
 	}
 
+	logger.Infof("Sending bytes to proxy: %s", bytes)
+
 	i, err := ch.sendConnection.Write(bytes)
 
 	ch.sendLock.Unlock()
@@ -165,6 +169,9 @@ func (ch *chain) sendEnvToBFTProxy(env *cb.Envelope) (int, error) {
 func (ch *chain) recvLength(conn net.Conn) (int64, error) {
 	var size int64
 	err := binary.Read(conn, binary.BigEndian, &size)
+
+	logger.Infof("Receiving length to proxy: %s", size)
+
 	return size, err
 }
 
@@ -183,6 +190,8 @@ func (ch *chain) recvBytes(conn net.Conn) ([]byte, error) {
 		return nil, err
 	}
 
+	logger.Infof("Receiving bytes from proxy: %s", buf)
+
 	return buf, nil
 }
 
@@ -196,6 +205,8 @@ func (ch *chain) recvEnvFromBFTProxy(conn net.Conn) (*cb.Envelope, error) {
 	buf := make([]byte, size)
 
 	_, err = io.ReadFull(conn, buf)
+
+	logger.Infof("Receiving env bytes from proxy: %s", buf)
 
 	if err != nil {
 		return nil, err
@@ -235,7 +246,7 @@ func (ch *chain) Order(env *cb.Envelope, _ uint64) error {
 	select {
 	case <-ch.exitChan:
 		return fmt.Errorf("exiting")
-	default: //JCS: avoid blocking
+	default:
 		return nil
 	}
 }
@@ -248,16 +259,9 @@ func (ch *chain) connLoop() {
 			continue
 		}
 
-		// receive a marshalled block
-		bytes, err := ch.recvBytes(conn)
+		block, err := ch.recvEnvFromBFTProxy(conn)
 		if err != nil {
-			logger.Errorf("[recv] Error while receiving block from HoneyBadgerBFT proxy: %v\n", err)
-			continue
-		}
-
-		block, err := utils.GetBlockFromBlockBytes(bytes)
-		if err != nil {
-			logger.Errorf("[recv] Error while unmarshaling block from HoneyBadgerBFT proxy: %v\n", err)
+			logger.Errorf("[recv] Error while receiving envelope from HoneyBadgerBFT proxy: %v\n", err)
 			continue
 		}
 
@@ -266,17 +270,45 @@ func (ch *chain) connLoop() {
 }
 
 func (ch *chain) appendToChain() {
+	var timer <-chan time.Time
+	var err error
+
 	for {
+		err = nil
 		select {
-		case block := <-ch.sendChan:
-
-			err := ch.support.AppendBlock(block)
+		case msg := <-ch.sendChan:
+			// NormalMsg
+			_, err = ch.support.ProcessNormalMsg(msg)
 			if err != nil {
-				logger.Panicf("Could not append block: %s", err)
+				logger.Warningf("Discarding bad normal message: %s", err)
+				continue
 			}
+			batches, _ := ch.support.BlockCutter().Ordered(msg)
+			if len(batches) == 0 && timer == nil {
+				timer = time.After(ch.support.SharedConfig().BatchTimeout())
+				continue
+			}
+			for _, batch := range batches {
+				block := ch.support.CreateNextBlock(batch)
+				ch.support.WriteBlock(block, nil)
+			}
+			if len(batches) > 0 {
+				timer = nil
+			}
+		case <-timer:
+			//clear the timer
+			timer = nil
 
+			batch := ch.support.BlockCutter().Cut()
+			if len(batch) == 0 {
+				logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
+				continue
+			}
+			logger.Debugf("Batch timer expired, creating block")
+			block := ch.support.CreateNextBlock(batch)
+			ch.support.WriteBlock(block, nil)
 		case <-ch.exitChan:
-			logger.Infof("Exiting...")
+			logger.Debugf("Exiting")
 			return
 		}
 	}
