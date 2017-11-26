@@ -46,7 +46,7 @@ type chain struct {
 	sendChan          chan *cb.Block
 	exitChan          chan struct{}
 	sendConnection    net.Conn
-	receiveConnection net.Conn
+	receiveConnection net.Listener
 	sendLock          *sync.Mutex
 }
 
@@ -85,7 +85,7 @@ func (ch *chain) Start() {
 
 	ch.sendConnection = conn
 
-	conn, err = net.Dial("unix", receiveSocketPath)
+	listen, err := net.Listen("unix", receiveSocketPath)
 
 	if err != nil {
 		logger.Errorf("Could not connect to receive proxy on path %s!", receiveSocketPath)
@@ -95,7 +95,7 @@ func (ch *chain) Start() {
 		logger.Infof("Connected to receive proxy!")
 	}
 
-	ch.receiveConnection = conn
+	ch.receiveConnection = listen
 
 	go ch.connLoop()
 
@@ -162,14 +162,14 @@ func (ch *chain) sendEnvToBFTProxy(env *cb.Envelope) (int, error) {
 	return i, err
 }
 
-func (ch *chain) recvLength() (int64, error) {
+func (ch *chain) recvLength(conn net.Conn) (int64, error) {
 	var size int64
-	err := binary.Read(ch.receiveConnection, binary.BigEndian, &size)
+	err := binary.Read(conn, binary.BigEndian, &size)
 	return size, err
 }
 
-func (ch *chain) recvBytes() ([]byte, error) {
-	size, err := ch.recvLength()
+func (ch *chain) recvBytes(conn net.Conn) ([]byte, error) {
+	size, err := ch.recvLength(conn)
 
 	if err != nil {
 		return nil, err
@@ -177,7 +177,7 @@ func (ch *chain) recvBytes() ([]byte, error) {
 
 	buf := make([]byte, size)
 
-	_, err = io.ReadFull(ch.receiveConnection, buf)
+	_, err = io.ReadFull(conn, buf)
 
 	if err != nil {
 		return nil, err
@@ -186,8 +186,8 @@ func (ch *chain) recvBytes() ([]byte, error) {
 	return buf, nil
 }
 
-func (ch *chain) recvEnvFromBFTProxy() (*cb.Envelope, error) {
-	size, err := ch.recvLength()
+func (ch *chain) recvEnvFromBFTProxy(conn net.Conn) (*cb.Envelope, error) {
+	size, err := ch.recvLength(conn)
 
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (ch *chain) recvEnvFromBFTProxy() (*cb.Envelope, error) {
 
 	buf := make([]byte, size)
 
-	_, err = io.ReadFull(ch.receiveConnection, buf)
+	_, err = io.ReadFull(conn, buf)
 
 	if err != nil {
 		return nil, err
@@ -242,8 +242,14 @@ func (ch *chain) Order(env *cb.Envelope, _ uint64) error {
 
 func (ch *chain) connLoop() {
 	for {
+		conn, err := ch.receiveConnection.Accept()
+		if err != nil {
+			logger.Errorf("[recv] Error while accepting connection from HoneyBadgerBFT proxy: %v\n", err)
+			continue
+		}
+
 		// receive a marshalled block
-		bytes, err := ch.recvBytes()
+		bytes, err := ch.recvBytes(conn)
 		if err != nil {
 			logger.Errorf("[recv] Error while receiving block from HoneyBadgerBFT proxy: %v\n", err)
 			continue
